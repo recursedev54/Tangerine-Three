@@ -1,0 +1,146 @@
+import os
+import json
+import random
+import nltk
+import tkinter as tk
+from tkinter import simpledialog, scrolledtext, ttk
+from tkinter import messagebox
+import pyttsx3
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from PIL import Image, ImageTk
+
+# Download VADER lexicon if not already done
+nltk.download('vader_lexicon')
+
+# Initialize the sentiment intensity analyzer
+sid = SentimentIntensityAnalyzer()
+
+# Initialize text-to-speech engine
+tts_engine = pyttsx3.init()
+tts_engine.setProperty('rate', 150)  # Speed up the voice
+
+# Define personas
+personas = {
+    "Tangerine": {
+        "greeting": "Hey there! I'm Tangerine! 🍊",
+        "responses": ["I love tangerines!", "Have you tried tangerine pie?", "Tangerines are life!", "Can you buy me more tangerines? 😔"]
+    },
+    "Lime": {
+        "greeting": "Hi! I'm Lime! 🍋",
+        "responses": ["Limes are so zesty!", "Lime juice is the best!", "Have you tried lime sorbet?", "I could use a bit of lime in my drink. 😉"]
+    },
+    "Berry": {
+        "greeting": "Hello! I'm Berry! 🍓",
+        "responses": ["Berries are sweet!", "I love berry smoothies!", "Berry pies are delicious!", "Let's go berry picking!"]
+    }
+}
+
+# Define emoticons
+emoticon_files = {
+    "happy": "happy.png",  # Replace with your local file paths
+    "sad": "sad.png",
+    "thinking": "thinking.png"
+}
+
+def load_emoticons(emoticon_files):
+    emoticons = {}
+    for key, filepath in emoticon_files.items():
+        try:
+            img = Image.open(filepath)
+            emoticons[key] = ImageTk.PhotoImage(img)
+        except Exception as e:
+            print(f"Error loading {filepath}: {e}")
+            emoticons[key] = None
+    return emoticons
+
+emoticons = load_emoticons(emoticon_files)
+
+# Define the main application class
+class FunChatApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Fun Chat Bot")
+        self.root.attributes('-fullscreen', True)
+        self.root.configure(bg='#ff4500')
+
+        self.current_persona = "Tangerine"
+
+        self.tabControl = ttk.Notebook(root)
+        self.chat_tab = ttk.Frame(self.tabControl, style="TFrame")
+        self.story_tab = ttk.Frame(self.tabControl, style="TFrame")
+        self.tabControl.add(self.chat_tab, text='Chat')
+        self.tabControl.add(self.story_tab, text='Story')
+        self.tabControl.pack(expand=1, fill="both")
+
+        style = ttk.Style()
+        style.configure("TFrame", background='#ff4500')
+        style.configure("TLabel", background='#ff4500', foreground='white')
+        style.configure("TButton", background='#ff4500', foreground='white')
+
+        # Chat tab
+        self.chat_box = scrolledtext.ScrolledText(self.chat_tab, wrap=tk.WORD, font=("Helvetica", 16), fg="white", bg="#ff4500")
+        self.chat_box.pack(expand=True, fill='both')
+        
+        self.user_input = tk.Entry(self.chat_tab, font=("Helvetica", 16), fg="white", bg="#ff4500")
+        self.user_input.pack(fill='x', side='bottom')
+        self.user_input.bind("<Return>", self.get_response)
+        
+        self.root.bind("<Escape>", self.exit_fullscreen)
+        self.chat_box.insert(tk.END, f"{personas[self.current_persona]['greeting']}\n")
+        self.chat_box.configure(state='disabled')
+
+        # Persona buttons
+        self.button_frame = tk.Frame(self.chat_tab, bg="#ff4500")
+        self.button_frame.pack(fill='x')
+        self.tangerine_button = tk.Button(self.button_frame, text="Tangerine", command=lambda: self.switch_persona("Tangerine"), bg='#ff4500', fg='white')
+        self.tangerine_button.pack(side='left', expand=True)
+        self.lime_button = tk.Button(self.button_frame, text="Lime", command=lambda: self.switch_persona("Lime"), bg='#ff4500', fg='white')
+        self.lime_button.pack(side='left', expand=True)
+        self.berry_button = tk.Button(self.button_frame, text="Berry", command=lambda: self.switch_persona("Berry"), bg='#ff4500', fg='white')
+        self.berry_button.pack(side='left', expand=True)
+
+        # Story tab
+        self.story_text = scrolledtext.ScrolledText(self.story_tab, wrap=tk.WORD, font=("Helvetica", 16), fg="white", bg="#ff4500")
+        self.story_text.pack(expand=True, fill='both')
+        self.story_text.insert(tk.END, "Once upon a time in a land full of fruits...\n")
+
+        self.chat_box.configure(state='disabled')
+
+    def switch_persona(self, persona):
+        self.current_persona = persona
+        self.chat_box.configure(state='normal')
+        self.chat_box.insert(tk.END, f"Switched to {persona} persona.\n")
+        self.chat_box.insert(tk.END, f"{personas[persona]['greeting']}\n")
+        self.chat_box.configure(state='disabled')
+
+    def get_response(self, event):
+        user_input = self.user_input.get()
+        self.chat_box.configure(state='normal')
+        self.chat_box.insert(tk.END, f"You: {user_input}\n")
+
+        response = random.choice(personas[self.current_persona]['responses'])
+        self.chat_box.insert(tk.END, f"{self.current_persona}: {response}\n")
+        
+        # Display emoticon
+        self.display_emoticon()
+
+        # Text-to-speech
+        tts_engine.say(response)
+        tts_engine.runAndWait()
+
+        self.chat_box.configure(state='disabled')
+        self.user_input.delete(0, tk.END)
+
+    def display_emoticon(self):
+        emoticon_label = tk.Label(self.chat_tab, image=random.choice(list(emoticons.values())), bg='#ff4500')
+        emoticon_label.pack()
+        self.chat_box.window_create(tk.END, window=emoticon_label)
+        self.chat_box.insert(tk.END, "\n")
+
+    def exit_fullscreen(self, event):
+        self.root.destroy()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = FunChatApp(root)
+    root.mainloop()
